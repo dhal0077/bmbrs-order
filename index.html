@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMBRS — Molotow Order</title>
+<style>
+  :root{
+    --bg:#0b0b0d;
+    --panel:#161619;
+    --panel2:#1e1e22;
+    --border:#2a2a2f;
+    --text:#f2f2f2;
+    --muted:#9a9aa2;
+    --accent:#ff6a39;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Malgun Gothic",sans-serif;
+    padding-bottom:80px;
+  }
+  header{
+    padding:20px 16px 0;
+  }
+  .title{
+    font-weight:800;
+    font-size:20px;
+    letter-spacing:0.5px;
+    margin-bottom:14px;
+  }
+  .tabs{
+    display:flex;
+    gap:4px;
+    border-bottom:1px solid var(--border);
+    overflow-x:auto;
+  }
+  .tab{
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--muted);
+    cursor:pointer;
+    white-space:nowrap;
+    border-bottom:2px solid transparent;
+  }
+  .tab.active{
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+  }
+  .search-wrap{
+    padding:12px 16px;
+  }
+  .search-wrap input{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:14px;
+  }
+  .section-label{
+    padding:10px 16px 4px;
+    font-size:12px;
+    font-weight:800;
+    color:var(--muted);
+    letter-spacing:1px;
+  }
+  .color-list{
+    padding:0 16px;
+  }
+  .color-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .color-swatch{
+    width:36px;
+    height:36px;
+    border-radius:8px;
+    flex-shrink:0;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .color-info{
+    flex:1;
+    min-width:0;
+  }
+  .color-num{
+    font-size:11px;
+    color:var(--muted);
+    font-weight:700;
+  }
+  .color-name{
+    font-size:14px;
+    font-weight:600;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .cap-spec{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .qty-ctrl{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .qty-btn{
+    width:28px;
+    height:28px;
+    border-radius:6px;
+    background:var(--panel2);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+    font-size:16px;
+  }
+  .qty-btn:active{background:var(--border);}
+  .qty-display{
+    min-width:20px;
+    text-align:center;
+    font-weight:700;
+    font-size:14px;
+  }
+  .qty-display.nonzero{color:var(--accent);}
+
+  .order-bar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:var(--panel);
+    border-top:1px solid var(--border);
+    padding:12px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    z-index:50;
+  }
+  .order-bar .count{
+    font-weight:800;
+    color:var(--accent);
+  }
+
+  .order-panel{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    display:none;
+    align-items:flex-end;
+    z-index:100;
+  }
+  .order-panel.open{display:flex;}
+  .order-sheet{
+    background:var(--panel);
+    width:100%;
+    max-height:80vh;
+    border-radius:16px 16px 0 0;
+    display:flex;
+    flex-direction:column;
+  }
+  .order-sheet-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .order-sheet-header .name{font-weight:800;font-size:16px;}
+  .close-btn{
+    cursor:pointer;
+    font-size:18px;
+    color:var(--muted);
+    padding:4px 8px;
+  }
+  .order-sheet-body{
+    overflow-y:auto;
+    padding:8px 16px;
+    flex:1;
+  }
+  .order-group-title{
+    font-weight:800;
+    font-size:13px;
+    color:var(--accent);
+    margin:14px 0 6px;
+  }
+  .order-line{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    padding:4px 0;
+    color:var(--text);
+  }
+  .order-line .oname{color:var(--muted);}
+  .order-subtotal{
+    font-size:12px;
+    color:var(--muted);
+    padding:4px 0 0;
+    border-top:1px dashed var(--border);
+    margin-top:4px;
+  }
+  .order-sheet-footer{
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--border);
+    display:flex;
+    gap:10px;
+  }
+  .btn{
+    flex:1;
+    padding:12px;
+    border-radius:10px;
+    text-align:center;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .btn-ghost{
+    background:var(--panel2);
+    color:var(--text);
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:#1a0a02;
+  }
+  .empty-msg{
+    color:var(--muted);
+    font-size:13px;
+    padding:24px 0;
+    text-align:center;
+  }
+  .toast{
+    position:fixed;
+    bottom:90px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#2c2c31;
+    color:var(--text);
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s;
+    z-index:200;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">BMBRS × MOLOTOW</div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<div class="search-wrap">
+  <input id="searchInput" type="search" placeholder="번호 또는 컬러명 검색...">
+</div>
+
+<div class="color-list" id="colorList"></div>
+
+<div class="order-bar" id="orderBar">
+  <span>ORDER LIST</span>
+  <span class="count" id="orderCount">0개</span>
+</div>
+
+<div class="order-panel" id="orderPanel">
+  <div class="order-sheet">
+    <div class="order-sheet-header">
+      <div class="name">ORDER LIST</div>
+      <div class="close-btn" id="closeOrder">✕</div>
+    </div>
+    <div class="order-sheet-body" id="orderBody"></div>
+    <div class="order-sheet-footer">
+      <div class="btn btn-ghost" id="clearAllBtn">전체 초기화</div>
+      <div class="btn btn-primary" id="copyOrderBtn">주문서 복사</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">클립보드에 복사됐습니다</div>
+
+<script>
+const DATA = {
+  premium: [{"num": "001", "name": "jasmin yellow", "hex": "f6eb61"}, {"num": "002", "name": "zinc yellow", "hex": "fedb00"}, {"num": "003", "name": "cadmium yellow", "hex": "ffcd00"}, {"num": "004", "name": "signal yellow", "hex": "ffb81c"}, {"num": "005", "name": "nature white", "hex": "f1e6b2"}, {"num": "006", "name": "vanilla", "hex": "f8e08e"}, {"num": "007", "name": "cashmere yellow", "hex": "f9e547"}, {"num": "008", "name": "quince", "hex": "fdd757"}, {"num": "009", "name": "golden yellow", "hex": "ffb81c"}, {"num": "010", "name": "melon yellow", "hex": "ffc72c"}, {"num": "011", "name": "SLIDER light orange", "hex": "ff8f1c"}, {"num": "012", "name": "pastel orange", "hex": "ff7f32"}, {"num": "013", "name": "DARE orange light", "hex": "ff6a39"}, {"num": "014", "name": "DARE orange", "hex": "e35205"}, {"num": "015", "name": "LINDA's sunset", "hex": "cf4520"}, {"num": "016", "name": "traffic red", "hex": "ef3340"}, {"num": "017", "name": "tornado red", "hex": "a6192e"}, {"num": "018", "name": "ruby red", "hex": "862633"}, {"num": "019", "name": "burgundy", "hex": "a4123f"}, {"num": "020", "name": "garnet", "hex": "572932"}, {"num": "021", "name": "GESER black red", "hex": "3f2021"}, {"num": "022", "name": "LOOMIT's aubergine", "hex": "4b384c"}, {"num": "023", "name": "peach pastel", "hex": "ffbe9f"}, {"num": "024", "name": "peach light", "hex": "ffa06a"}, {"num": "025", "name": "peach", "hex": "ffb990"}, {"num": "026", "name": "goldfish", "hex": "eca154"}, {"num": "027", "name": "lobster light", "hex": "ff7f41"}, {"num": "028", "name": "lobster middle", "hex": "e35205"}, {"num": "029", "name": "lobster", "hex": "dc4405"}, {"num": "030", "name": "vermillion", "hex": "e04e39"}, {"num": "031", "name": "shock orange", "hex": "e03c31"}, {"num": "032", "name": "MAD C cherry red", "hex": "cb333b"}, {"num": "033", "name": "signal red", "hex": "ba0c2f"}, {"num": "034", "name": "apricot", "hex": "ff9d6e"}, {"num": "035", "name": "salmon orange", "hex": "e8927c"}, {"num": "036", "name": "autumn leaf", "hex": "a65523"}, {"num": "037", "name": "LOOMIT's apricot pastel", "hex": "ffb3ab"}, {"num": "038", "name": "LOOMIT's apricot light", "hex": "f5a28a"}, {"num": "039", "name": "LOOMIT's apricot middle", "hex": "e56a54"}, {"num": "040", "name": "LOOMIT's apricot", "hex": "e04e39"}, {"num": "041", "name": "strawberry red", "hex": "ff808b"}, {"num": "042", "name": "pussy pink", "hex": "d25b73"}, {"num": "043", "name": "raspberry red", "hex": "a6093d"}, {"num": "044", "name": "sangria", "hex": "861f41"}, {"num": "045", "name": "grapefruit light", "hex": "ffb1bb"}, {"num": "046", "name": "grapefruit", "hex": "f4a6d7"}, {"num": "047", "name": "mauve light", "hex": "d7a3ab"}, {"num": "048", "name": "mauve", "hex": "c48490"}, {"num": "049", "name": "antique pink middle", "hex": "cca1a6"}, {"num": "050", "name": "antique pink", "hex": "9c6169"}, {"num": "051", "name": "piglet pink light", "hex": "ecc7cd"}, {"num": "052", "name": "piglet pink", "hex": "f4a6d7"}, {"num": "053", "name": "candy", "hex": "ef95cf"}, {"num": "054", "name": "lipstick", "hex": "c6579a"}, {"num": "055", "name": "purple", "hex": "80225f"}, {"num": "056", "name": "ESHER dirty red", "hex": "612141"}, {"num": "057", "name": "TILT bubble pink", "hex": "ef95cf"}, {"num": "058", "name": "fuchsia pink", "hex": "e277cd"}, {"num": "059", "name": "MAD C psycho pink", "hex": "eb6fbd"}, {"num": "060", "name": "telemagenta", "hex": "ac145a"}, {"num": "061", "name": "amaranth red", "hex": "890c58"}, {"num": "062", "name": "MACrew purple", "hex": "833177"}, {"num": "063", "name": "purple violet", "hex": "512a44"}, {"num": "064", "name": "crocus", "hex": "d7c6e6"}, {"num": "065", "name": "lavender", "hex": "b4b5df"}, {"num": "066", "name": "lilac", "hex": "ad96dc"}, {"num": "067", "name": "grape", "hex": "9063cd"}, {"num": "068", "name": "blackberry", "hex": "7d55c7"}, {"num": "069", "name": "currant", "hex": "500778"}, {"num": "070", "name": "crazy plum", "hex": "2e1a47"}, {"num": "071", "name": "violet dark", "hex": "2e1a47"}, {"num": "072", "name": "black violet", "hex": "1a0a2a"}, {"num": "073", "name": "thistle", "hex": "bdc5db"}, {"num": "074", "name": "viola pastel", "hex": "c3c8e8"}, {"num": "075", "name": "viola light", "hex": "8b87c0"}, {"num": "076", "name": "viola middle", "hex": "606eb2"}, {"num": "077", "name": "viola", "hex": "485cc7"}, {"num": "078", "name": "viola dark", "hex": "2e2b7a"}, {"num": "079", "name": "night SEEN blue", "hex": "001871"}, {"num": "080", "name": "grape middle", "hex": "485cc7"}, {"num": "081", "name": "grape dark", "hex": "685bc7"}, {"num": "082", "name": "purple velvet", "hex": "2e008b"}, {"num": "083", "name": "light violet", "hex": "9595d2"}, {"num": "084", "name": "plum middle", "hex": "8d89a5"}, {"num": "085", "name": "NASTY SONS plum", "hex": "595478"}, {"num": "086", "name": "pigeon blue middle", "hex": "b1c9e8"}, {"num": "087", "name": "pigeon blue", "hex": "7ba4db"}, {"num": "088", "name": "blueberry light", "hex": "5c88da"}, {"num": "089", "name": "azure blue light", "hex": "b9d9eb"}, {"num": "090", "name": "azure blue", "hex": "9bcbeb"}, {"num": "091", "name": "shock blue pastel", "hex": "8dc8e8"}, {"num": "092", "name": "shock blue light", "hex": "5bc2e7"}, {"num": "093", "name": "shock blue middle", "hex": "4298b5"}, {"num": "094", "name": "shock blue", "hex": "0086bf"}, {"num": "095", "name": "tulip blue light", "hex": "0072ce"}, {"num": "096", "name": "tulip blue middle", "hex": "0057b8"}, {"num": "097", "name": "tulip blue", "hex": "005eb8"}, {"num": "098", "name": "SOTEN light blue", "hex": "00a3e0"}, {"num": "099", "name": "ceramic pastel", "hex": "62b5e5"}, {"num": "100", "name": "jeans blue", "hex": "007dba"}, {"num": "101", "name": "wild WANE blue", "hex": "003865"}, {"num": "102", "name": "navy blue", "hex": "3a5dae"}, {"num": "103", "name": "ultramarine blue", "hex": "00205b"}, {"num": "104", "name": "sapphire blue", "hex": "002a3a"}, {"num": "105", "name": "indigo", "hex": "002a3a"}, {"num": "106", "name": "ECB prussian blue dark", "hex": "002a3a"}, {"num": "106-1", "name": "stormblue middle", "hex": "4f6e8c"}, {"num": "106-2", "name": "stormblue", "hex": "3a5270"}, {"num": "106-3", "name": "stormblue dark", "hex": "263a52"}, {"num": "107", "name": "petrol", "hex": "003b5c"}, {"num": "108", "name": "deep-sea blue", "hex": "002a3a"}, {"num": "109", "name": "deep-sea blue dark", "hex": "00263e"}, {"num": "110", "name": "ice-blue dark", "hex": "9bd3dd"}, {"num": "111", "name": "dolphin blue", "hex": "3eb1c8"}, {"num": "112", "name": "petrol blue", "hex": "59cbe8"}, {"num": "113", "name": "cream blue", "hex": "00c1d5"}, {"num": "114", "name": "olympia blue", "hex": "00a8b5"}, {"num": "115", "name": "aqua", "hex": "007fa3"}, {"num": "116", "name": "alga", "hex": "007fa3"}, {"num": "117", "name": "baby blue", "hex": "b8dde1"}, {"num": "118", "name": "crystal blue dark", "hex": "77c5d5"}, {"num": "119", "name": "blue gin", "hex": "4f868e"}, {"num": "120", "name": "verdigris", "hex": "007681"}, {"num": "121", "name": "caribbean", "hex": "d1e0d7"}, {"num": "122", "name": "riviera pastel", "hex": "8ce2d0"}, {"num": "123", "name": "riviera light", "hex": "64ccc9"}, {"num": "124", "name": "TASTE riviera middle", "hex": "2ad2c9"}, {"num": "125", "name": "riviera dark", "hex": "279989"}, {"num": "126", "name": "lagoon blue", "hex": "00b2a9"}, {"num": "127", "name": "MARTHA marine", "hex": "007377"}, {"num": "128", "name": "turquoise dark", "hex": "115740"}, {"num": "129", "name": "nori", "hex": "004851"}, {"num": "130", "name": "black turqoise", "hex": "003b49"}, {"num": "131", "name": "gale green", "hex": "a3b2a4"}, {"num": "132", "name": "reed", "hex": "9ab9ad"}, {"num": "133", "name": "aquamarine", "hex": "b9dcd2"}, {"num": "134", "name": "swamp", "hex": "43695b"}, {"num": "135", "name": "black forest green", "hex": "3e5d58"}, {"num": "136", "name": "blueberry pastel", "hex": "b1e4e3"}, {"num": "137", "name": "calypso light", "hex": "d1e0d7"}, {"num": "138", "name": "calypso middle", "hex": "2cd5c4"}, {"num": "139", "name": "calypso dark", "hex": "71cc98"}, {"num": "140", "name": "turquoise green", "hex": "00af66"}, {"num": "141", "name": "turquoise green mid.", "hex": "007a53"}, {"num": "142", "name": "turquoise green dark", "hex": "154734"}, {"num": "143", "name": "future green", "hex": "0c3026"}, {"num": "144", "name": "menthol light", "hex": "9be3bf"}, {"num": "145", "name": "menthol", "hex": "80e0a7"}, {"num": "146", "name": "KACAO77 UNIVERSES green", "hex": "26d07c"}, {"num": "147", "name": "lettuce green", "hex": "44b560"}, {"num": "148", "name": "kiwi pastel", "hex": "f0ec74"}, {"num": "149", "name": "kiwi light", "hex": "c4d600"}, {"num": "150", "name": "kiwi", "hex": "84bd00"}, {"num": "151", "name": "dandelion", "hex": "c5e86c"}, {"num": "152", "name": "brilliant green", "hex": "a4d65e"}, {"num": "153", "name": "grasshopper", "hex": "78be20"}, {"num": "154", "name": "cream green", "hex": "8edd65"}, {"num": "155", "name": "hippie green", "hex": "a1d884"}, {"num": "156", "name": "BACON wasabi", "hex": "78d64b"}, {"num": "157", "name": "cliff green", "hex": "6cc24a"}, {"num": "158", "name": "clover green", "hex": "43b02a"}, {"num": "159", "name": "juice green", "hex": "c2e189"}, {"num": "160", "name": "MISTER GREEN", "hex": "007a33"}, {"num": "160-1", "name": "leaf green middle", "hex": "275d38"}, {"num": "161", "name": "leaf green", "hex": "275d38"}, {"num": "162", "name": "MIGHTY GREEN", "hex": "8f993e"}, {"num": "163", "name": "avocado", "hex": "789d4a"}, {"num": "164", "name": "fern green", "hex": "67823a"}, {"num": "165", "name": "moss green", "hex": "2c5234"}, {"num": "166", "name": "chromium oxide green", "hex": "5b6236"}, {"num": "167", "name": "black green", "hex": "2c3a1e"}, {"num": "168", "name": "butterfly green", "hex": "e9ec6b"}, {"num": "169", "name": "green tea", "hex": "c4d6a4"}, {"num": "170", "name": "P.JAY green", "hex": "a3aa83"}, {"num": "171", "name": "amazonas", "hex": "5773cc"}, {"num": "172", "name": "camouflage", "hex": "594a25"}, {"num": "173", "name": "evil olive", "hex": "4a412a"}, {"num": "174", "name": "poison green", "hex": "c4d600"}, {"num": "175", "name": "apple", "hex": "bfb800"}, {"num": "176", "name": "sorbet green", "hex": "e9df97"}, {"num": "177", "name": "soft pastel", "hex": "e9df97"}, {"num": "178", "name": "carambola", "hex": "dbde70"}, {"num": "179", "name": "hemp", "hex": "ac9f3c"}, {"num": "180", "name": "green bean", "hex": "8f993e"}, {"num": "181", "name": "pear", "hex": "949300"}, {"num": "181-1", "name": "nature green light", "hex": "c8d98a"}, {"num": "181-2", "name": "nature green middle", "hex": "a8bb5a"}, {"num": "182", "name": "mustard", "hex": "d9c756"}, {"num": "182-1", "name": "mustard yellow", "hex": "e8c84a"}, {"num": "182-2", "name": "khaki green", "hex": "b0b840"}, {"num": "183", "name": "khaki", "hex": "ad841f"}, {"num": "184", "name": "ivory light", "hex": "dbc8b6"}, {"num": "184-1", "name": "sand light", "hex": "f5e1a4"}, {"num": "184-2", "name": "sand middle", "hex": "fdd086"}, {"num": "184-3", "name": "sand", "hex": "ecd898"}, {"num": "184-4", "name": "quartz sand", "hex": "cdb888"}, {"num": "184-5", "name": "quartz sand middle", "hex": "bda878"}, {"num": "184-6", "name": "quartz sand light", "hex": "d4c090"}, {"num": "184-7", "name": "furwhite", "hex": "f0ead6"}, {"num": "185", "name": "milk coffee", "hex": "ceb888"}, {"num": "186", "name": "cappuccino", "hex": "b09060"}, {"num": "187", "name": "espresso", "hex": "7b5b3a"}, {"num": "188", "name": "mocca", "hex": "5c462b"}, {"num": "189", "name": "sahara beige light", "hex": "f5e1a4"}, {"num": "190", "name": "sahara beige middle", "hex": "fdd086"}, {"num": "191", "name": "sahara beige", "hex": "ecd898"}, {"num": "192", "name": "papyrus", "hex": "cda077"}, {"num": "193", "name": "nougat", "hex": "b9975b"}, {"num": "194", "name": "beige brown", "hex": "9a6a4f"}, {"num": "195", "name": "apricot beige", "hex": "fcd299"}, {"num": "196", "name": "labrador", "hex": "fcc89b"}, {"num": "197", "name": "camel", "hex": "c19a6b"}, {"num": "198", "name": "ocher brown", "hex": "996017"}, {"num": "199", "name": "orange brown light", "hex": "eed484"}, {"num": "200", "name": "orange brown middle", "hex": "c88242"}, {"num": "201", "name": "orange brown", "hex": "885511"}, {"num": "202", "name": "cocoa light", "hex": "ab5c57"}, {"num": "203", "name": "cocoa middle", "hex": "9c6169"}, {"num": "204", "name": "cocoa", "hex": "6a3735"}, {"num": "204-1", "name": "caramel light", "hex": "c8955a"}, {"num": "205", "name": "caramel", "hex": "ad7c59"}, {"num": "206", "name": "walnut", "hex": "7c4d3a"}, {"num": "207", "name": "hazelnut", "hex": "693f23"}, {"num": "208", "name": "chocolate brown", "hex": "4e3629"}, {"num": "209", "name": "CMP dark brown", "hex": "473729"}, {"num": "210", "name": "tar black", "hex": "373a36"}, {"num": "211", "name": "stone grey dark", "hex": "65665c"}, {"num": "212", "name": "stone grey middle", "hex": "7e7f74"}, {"num": "213", "name": "stone grey light", "hex": "babbb1"}, {"num": "214", "name": "TOAST signal black", "hex": "25282a"}, {"num": "215", "name": "black grey neutral", "hex": "3a3a3a"}, {"num": "216", "name": "dark grey neutral", "hex": "555555"}, {"num": "217", "name": "CAPARSO middle grey neutral", "hex": "9ea2a2"}, {"num": "218", "name": "light grey neutral", "hex": "c4bfb6"}, {"num": "219", "name": "mouse grey", "hex": "707372"}, {"num": "220", "name": "silver dollar", "hex": "c1c6c8"}, {"num": "220-1", "name": "gold dollar", "hex": "cba052"}, {"num": "221", "name": "deep black", "hex": "000000"}, {"num": "221-1", "name": "black grey light", "hex": "404040"}, {"num": "221-2", "name": "black grey middle", "hex": "2a2a2a"}, {"num": "222", "name": "black grey dark", "hex": "25282a"}, {"num": "222-1", "name": "anthracite grey dark", "hex": "3a3d3f"}, {"num": "223", "name": "anthracite grey", "hex": "5b6770"}, {"num": "223-1", "name": "anthracite grey middle", "hex": "6a7278"}, {"num": "224", "name": "grey blue dark", "hex": "898d8d"}, {"num": "225", "name": "granite", "hex": "7c878e"}, {"num": "226", "name": "grey blue middle", "hex": "898d8d"}, {"num": "227", "name": "rock grey", "hex": "a2aaad"}, {"num": "228", "name": "grey blue light", "hex": "c1c6c8"}, {"num": "229", "name": "pebble grey", "hex": "d0d3d4"}, {"num": "230", "name": "marble", "hex": "e8e8e8"}, {"num": "231", "name": "signal white", "hex": "ffffff"}, {"num": "232", "name": "neon yellow", "hex": "ffe900"}, {"num": "233", "name": "neon orange", "hex": "ffaa4d"}, {"num": "234", "name": "neon pink", "hex": "ff3eb5"}, {"num": "234-1", "name": "neon violet", "hex": "cc00ff"}, {"num": "235", "name": "neon blue", "hex": "009ace"}, {"num": "235-1", "name": "neon turquoise", "hex": "00ffcc"}, {"num": "236", "name": "neon green", "hex": "44d62c"}, {"num": "236-1", "name": "ANTISTATIK neon red", "hex": "ff2b2b"}, {"num": "237", "name": "melon yellow transp.", "hex": "fef5a0"}, {"num": "238", "name": "DARE orange transp.", "hex": "fddab8"}, {"num": "239", "name": "traffic red transp.", "hex": "fbbcc8"}, {"num": "240", "name": "telemagenta transp.", "hex": "f5b8d8"}, {"num": "241", "name": "currant transp.", "hex": "d0a8c8"}, {"num": "242", "name": "ultramarine blue transp.", "hex": "b0c0e8"}, {"num": "243", "name": "shock blue transp.", "hex": "a8d8f0"}, {"num": "244", "name": "lagoon blue transp.", "hex": "a8e0d8"}, {"num": "245", "name": "juice green transp.", "hex": "d8f0a8"}, {"num": "246", "name": "hazelnut transp.", "hex": "e8d0a8"}, {"num": "247", "name": "beige brown transp.", "hex": "e0c0a0"}, {"num": "248", "name": "milk coffee transp.", "hex": "f0dec0"}, {"num": "249", "name": "TOAST signal black transp.", "hex": "a0a0a0"}, {"num": "250", "name": "middle grey neutral transp.", "hex": "c8c8c8"}, {"num": "251", "name": "signal white transp.", "hex": "b0b8c0"}, {"num": "252", "name": "clear coat gloss", "hex": "eaf4fa"}, {"num": "253", "name": "clear coat matt", "hex": "f2f2f0"}],
+  coversall: [{"num": "006", "name": "zinc yellow", "hex": "fedb00"}, {"num": "082", "name": "cadmium yellow", "hex": "ffcd00"}, {"num": "165", "name": "signal yellow", "hex": "ffb81c"}, {"num": "084", "name": "light orange", "hex": "ff8c00"}, {"num": "184", "name": "dare orange light", "hex": "ff6a39"}, {"num": "085", "name": "dare orange", "hex": "e35205"}, {"num": "013", "name": "traffic red", "hex": "ef3340"}, {"num": "098", "name": "tornado red", "hex": "a6192e"}, {"num": "086", "name": "burgundy", "hex": "a4123f"}, {"num": "188", "name": "mad c cherry red", "hex": "cb333b"}, {"num": "014", "name": "signal red", "hex": "ba0c2f"}, {"num": "136", "name": "fuchsia pink", "hex": "e277cd"}, {"num": "198", "name": "mad c psycho pink", "hex": "eb6fbd"}, {"num": "164", "name": "telemagenta", "hex": "ac145a"}, {"num": "203", "name": "blackberry", "hex": "7d55c7"}, {"num": "042", "name": "currant", "hex": "500778"}, {"num": "044", "name": "crazy plum", "hex": "2e1a47"}, {"num": "212", "name": "azure blue", "hex": "9bcbeb"}, {"num": "161", "name": "shock blue middle", "hex": "4298b5"}, {"num": "032", "name": "shock blue", "hex": "0086bf"}, {"num": "214", "name": "tulip blue middle", "hex": "0057b8"}, {"num": "033", "name": "tulip blue", "hex": "005eb8"}, {"num": "024", "name": "ultramarine blue", "hex": "00205b"}, {"num": "217", "name": "riviera middle", "hex": "2ad2c9"}, {"num": "074", "name": "lagoon blue", "hex": "00b2a9"}, {"num": "119", "name": "kiwi light", "hex": "c4d600"}, {"num": "118", "name": "kiwi", "hex": "84bd00"}, {"num": "064", "name": "grasshopper", "hex": "78be20"}, {"num": "223", "name": "clover green", "hex": "43b02a"}, {"num": "066", "name": "juice green", "hex": "c2e189"}, {"num": "079", "name": "nature white", "hex": "f1e6b2"}, {"num": "167", "name": "ivory light", "hex": "dbc8b6"}, {"num": "075", "name": "milk coffee", "hex": "ceb888"}, {"num": "151", "name": "beige brown", "hex": "9a6a4f"}, {"num": "092", "name": "hazelnut", "hex": "693f23"}, {"num": "152", "name": "chocolate brown", "hex": "4e3629"}, {"num": "180", "name": "signal black", "hex": "1a1a1a"}, {"num": "102", "name": "dark grey neutral", "hex": "555555"}, {"num": "101", "name": "middle grey neutral", "hex": "9ea2a2"}, {"num": "100", "name": "light grey neutral", "hex": "c4bfb6"}, {"num": "158", "name": "silver dollar", "hex": "c1c6c8"}, {"num": "148", "name": "anthracite grey", "hex": "5b6770"}, {"num": "178", "name": "grey blue middle", "hex": "898d8d"}, {"num": "239", "name": "marble", "hex": "e8e8e8"}, {"num": "160", "name": "signal white", "hex": "ffffff"}, {"num": "400", "name": "chrome", "hex": "c0c0c0"}, {"num": "401", "name": "gold", "hex": "d4af37"}, {"num": "402", "name": "copper", "hex": "b87333"}, {"num": "403", "name": "pure black", "hex": "000000"}],
+  urbanfa: [{"num": "300", "name": "vanilla", "hex": "f8e08e"}, {"num": "301", "name": "naples yellow", "hex": "fada5e"}, {"num": "006", "name": "zinc yellow", "hex": "fedb00"}, {"num": "302", "name": "permanent orange light", "hex": "ffa040"}, {"num": "085", "name": "dare orange", "hex": "e35205"}, {"num": "303", "name": "vermilion orange", "hex": "e35028"}, {"num": "304", "name": "cadmium red", "hex": "e8112d"}, {"num": "013", "name": "traffic red", "hex": "ef3340"}, {"num": "305", "name": "garance red", "hex": "c8102e"}, {"num": "086", "name": "burgundy", "hex": "a4123f"}, {"num": "306", "name": "pink", "hex": "f4a6c0"}, {"num": "307", "name": "magenta", "hex": "cc0066"}, {"num": "308", "name": "primary magenta", "hex": "e0007a"}, {"num": "309", "name": "currant light", "hex": "9b6b9b"}, {"num": "042", "name": "currant", "hex": "500778"}, {"num": "310", "name": "currant dark", "hex": "3a0050"}, {"num": "311", "name": "ceramic blue", "hex": "7ec8e3"}, {"num": "312", "name": "light blue", "hex": "a8d0e8"}, {"num": "161", "name": "shock blue middle", "hex": "4298b5"}, {"num": "314", "name": "cerulean blue", "hex": "005b8e"}, {"num": "204", "name": "true blue", "hex": "003087"}, {"num": "315", "name": "ultramarine blue", "hex": "1f1646"}, {"num": "027", "name": "petrol", "hex": "003b5c"}, {"num": "316", "name": "turquoise blue light", "hex": "66c8c8"}, {"num": "317", "name": "turquoise blue", "hex": "009b9b"}, {"num": "318", "name": "turquoise blue dark", "hex": "007a7a"}, {"num": "319", "name": "lagoon blue light", "hex": "33bbb8"}, {"num": "206", "name": "lagoon blue", "hex": "00b2a9"}, {"num": "320", "name": "lagoon blue dark", "hex": "007a76"}, {"num": "321", "name": "emerald green light", "hex": "00a878"}, {"num": "322", "name": "emerald green", "hex": "008060"}, {"num": "323", "name": "permanent green dark", "hex": "004d30"}, {"num": "221", "name": "grasshopper", "hex": "78be20"}, {"num": "324", "name": "grass green", "hex": "44aa44"}, {"num": "096", "name": "mister green", "hex": "007a33"}, {"num": "145", "name": "future green", "hex": "154734"}, {"num": "325", "name": "sahara beige light", "hex": "f5e1a4"}, {"num": "326", "name": "sahara beige", "hex": "ecd898"}, {"num": "208", "name": "ocher brown light", "hex": "eed484"}, {"num": "092", "name": "hazelnut brown", "hex": "693f23"}, {"num": "329", "name": "umber light", "hex": "c8955a"}, {"num": "328", "name": "umber middle", "hex": "a0722a"}, {"num": "327", "name": "umber", "hex": "7a5230"}, {"num": "332", "name": "light grey neutral", "hex": "c4bfb6"}, {"num": "331", "name": "middle grey neutral", "hex": "9ea2a2"}, {"num": "330", "name": "dark grey neutral", "hex": "555555"}, {"num": "180", "name": "signal black", "hex": "1a1a1a"}, {"num": "160", "name": "signal white", "hex": "ffffff"}],
+  caps: [{"group": "SKINNY"}, {"num": "900077", "spec": "0.5~1.5cm · 극세 디테일 · 10개입", "name": "FLAME Super Fine (blue / black dot)"}, {"num": "9001", "spec": "0.5~2cm · 아웃라인 · 10개입", "name": "Super Skinny (white / grey dot)"}, {"num": "9002", "spec": "0.5~2cm · 아웃라인 · 10개입", "name": "Super Skinny (white / black dot)"}, {"num": "9013", "spec": "1~3cm · 아웃라인 · 10개입", "name": "Super Skinny (white / gold dot)"}, {"num": "9018", "spec": "1~2cm · 아웃라인 · 10개입", "name": "Molotow Super Skinny (black / black dot)"}, {"group": "SOFT"}, {"num": "9022", "spec": "2cm · 소프트 아웃라인 · 10개입", "name": "German Skinny (yellow / black dot)"}, {"num": "9009", "spec": "3cm · 소프트 페이딩 · 10개입", "name": "Smooth Soft (white / blue dot)"}, {"num": "9026", "spec": "3cm · 그라데이션 · 10개입", "name": "Soft Cap (black / blue dot)"}, {"num": "9008", "spec": "5cm · 아웃라인 특수 · 10개입", "name": "Outline Special Cap (white / gold dot)"}, {"group": "WIDE"}, {"num": "9007", "spec": "1~6cm · 필인 · 10개입", "name": "N.Y. Fat Cap (white / black dot)"}, {"num": "9006", "spec": "1~7cm · 저소음 필인 · 10개입", "name": "Silent Fat Cap (white / red dot)"}, {"num": "9005", "spec": "1~8cm · 대면적 채우기 · 10개입", "name": "Super Fat Cap (white / pink dot)"}, {"num": "9025", "spec": "1~10cm · 대면적 채우기 · 10개입", "name": "Yellow Fat Cap (yellow / black dot)"}, {"num": "9021", "spec": "1~12cm · 초대면적 · 10개입", "name": "Molotow Super Fat (black / red dot)"}, {"group": "SPECIAL"}, {"num": "9004", "spec": "1~4cm · 캘리그라피 · 10개입", "name": "Flat Jet Artist 1 (black / yellow dot)"}, {"num": "9015", "spec": "1~6cm · 캘리그라피 · 10개입", "name": "Flat Jet Artist 2 (red / black dot)"}, {"num": "9003", "spec": "0.5~1cm · 극세 파이프 · 10개입", "name": "Pipe Skinny Cap (white / pipe)"}, {"num": "9020", "spec": "1cm · Coversall 전용 · 10개입", "name": "Coversall Skinny (black / white dot)"}]
+};
+
+const CATEGORY_LABELS = {
+  premium: 'PREMIUM',
+  coversall: 'COVERSALL',
+  urbanfa: 'URBAN F/A',
+  caps: 'CAPS'
+};
+
+const TAB_ORDER = ['premium','coversall','urbanfa','caps'];
+
+let currentTab = 'premium';
+let qty = {}; // qty[category][num] = count
+
+function initQty(){
+  TAB_ORDER.forEach(cat => { qty[cat] = {}; });
+}
+initQty();
+
+function loadState(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('bmbrsOrderQty') || 'null');
+    if(saved) qty = Object.assign(qty, saved);
+  }catch(e){}
+}
+function saveState(){
+  try{ localStorage.setItem('bmbrsOrderQty', JSON.stringify(qty)); }catch(e){}
+}
+loadState();
+
+const tabsEl = document.getElementById('tabs');
+TAB_ORDER.forEach(cat => {
+  const el = document.createElement('div');
+  el.className = 'tab' + (cat === currentTab ? ' active' : '');
+  el.textContent = CATEGORY_LABELS[cat];
+  el.dataset.cat = cat;
+  el.addEventListener('click', () => {
+    currentTab = cat;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+    document.getElementById('searchInput').value = '';
+    render();
+  });
+  tabsEl.appendChild(el);
+});
+
+function changeQty(cat, num, delta){
+  const cur = qty[cat][num] || 0;
+  const next = Math.max(0, cur + delta);
+  qty[cat][num] = next;
+  saveState();
+  const disp = document.getElementById('qty_' + cat + '_' + num);
+  if(disp){
+    disp.textContent = next;
+    disp.classList.toggle('nonzero', next > 0);
+  }
+  updateOrderBar();
+}
+window.changeQty = changeQty;
+
+function render(){
+  const listEl = document.getElementById('colorList');
+  listEl.innerHTML = '';
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  if(currentTab === 'caps'){
+    DATA.caps.forEach(row => {
+      if(row.group){
+        const label = document.createElement('div');
+        label.className = 'section-label';
+        label.textContent = row.group;
+        listEl.appendChild(label);
+        return;
+      }
+      if(q && !(row.num.toLowerCase().includes(q) || row.name.toLowerCase().includes(q))) return;
+      listEl.appendChild(buildCapItem(row));
+    });
+    return;
+  }
+
+  const items = DATA[currentTab];
+  items.forEach(item => {
+    if(q && !(item.num.toLowerCase().includes(q) || item.name.toLowerCase().includes(q))) return;
+    listEl.appendChild(buildColorItem(currentTab, item));
+  });
+}
+
+function buildColorItem(cat, item){
+  const wrap = document.createElement('div');
+  wrap.className = 'color-item';
+  wrap.dataset.num = item.num;
+  wrap.dataset.name = item.name;
+
+  const swatch = document.createElement('div');
+  swatch.className = 'color-swatch';
+  swatch.style.background = '#' + item.hex;
+  wrap.appendChild(swatch);
+
+  const info = document.createElement('div');
+  info.className = 'color-info';
+  const numEl = document.createElement('div');
+  numEl.className = 'color-num';
+  numEl.textContent = '#' + item.num;
+  const nameEl = document.createElement('div');
+  nameEl.className = 'color-name';
+  nameEl.textContent = item.name;
+  info.appendChild(numEl);
+  info.appendChild(nameEl);
+  wrap.appendChild(info);
+
+  wrap.appendChild(buildQtyCtrl(cat, item.num));
+  return wrap;
+}
+
+function buildCapItem(row){
+  const wrap = document.createElement('div');
+  wrap.className = 'color-item';
+  wrap.dataset.num = row.num;
+  wrap.dataset.name = row.name;
+
+  const info = document.createElement('div');
+  info.className = 'color-info';
+  const numEl = document.createElement('div');
+  numEl.className = 'color-num';
+  numEl.textContent = row.num;
+  const specEl = document.createElement('div');
+  specEl.className = 'cap-spec';
+  specEl.textContent = row.spec;
+  const nameEl = document.createElement('div');
+  nameEl.className = 'color-name';
+  nameEl.textContent = row.name;
+  info.appendChild(numEl);
+  info.appendChild(specEl);
+  info.appendChild(nameEl);
+  wrap.appendChild(info);
+
+  wrap.appendChild(buildQtyCtrl('caps', row.num));
+  return wrap;
+}
+
+function buildQtyCtrl(cat, num){
+  const ctrl = document.createElement('div');
+  ctrl.className = 'qty-ctrl';
+
+  const minus = document.createElement('div');
+  minus.className = 'qty-btn';
+  minus.textContent = '−';
+  minus.addEventListener('click', () => changeQty(cat, num, -1));
+
+  const disp = document.createElement('div');
+  const cur = qty[cat][num] || 0;
+  disp.className = 'qty-display' + (cur > 0 ? ' nonzero' : '');
+  disp.id = 'qty_' + cat + '_' + num;
+  disp.textContent = cur;
+
+  const plus = document.createElement('div');
+  plus.className = 'qty-btn';
+  plus.textContent = '+';
+  plus.addEventListener('click', () => changeQty(cat, num, 1));
+
+  ctrl.appendChild(minus);
+  ctrl.appendChild(disp);
+  ctrl.appendChild(plus);
+  return ctrl;
+}
+
+document.getElementById('searchInput').addEventListener('input', render);
+
+function findItemName(cat, num){
+  if(cat === 'caps'){
+    const row = DATA.caps.find(r => r.num === num);
+    return row ? row.name : num;
+  }
+  const item = DATA[cat].find(it => it.num === num);
+  return item ? item.name : num;
+}
+
+function getOrderData(){
+  const groups = [];
+  let totalCount = 0;
+  TAB_ORDER.forEach(cat => {
+    const entries = Object.entries(qty[cat] || {}).filter(([,c]) => c > 0);
+    if(entries.length === 0) return;
+    entries.sort((a,b) => a[0].localeCompare(b[0], undefined, {numeric:true}));
+    let subtotal = 0;
+    const lines = entries.map(([num, count]) => {
+      subtotal += count;
+      return { num, name: findItemName(cat, num), count };
+    });
+    totalCount += subtotal;
+    groups.push({ cat, label: CATEGORY_LABELS[cat], lines, subtotal });
+  });
+  return { groups, totalCount };
+}
+
+function updateOrderBar(){
+  const { totalCount } = getOrderData();
+  document.getElementById('orderCount').textContent = totalCount + '개';
+}
+
+function renderOrderPanel(){
+  const body = document.getElementById('orderBody');
+  body.innerHTML = '';
+  const { groups, totalCount } = getOrderData();
+
+  if(groups.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty-msg';
+    empty.textContent = '담긴 항목이 없습니다';
+    body.appendChild(empty);
+    return;
+  }
+
+  groups.forEach(g => {
+    const title = document.createElement('div');
+    title.className = 'order-group-title';
+    title.textContent = '[' + g.label + ']';
+    body.appendChild(title);
+
+    g.lines.forEach(line => {
+      const row = document.createElement('div');
+      row.className = 'order-line';
+      const left = document.createElement('span');
+      left.className = 'oname';
+      left.textContent = '#' + line.num + ' ' + line.name;
+      const right = document.createElement('span');
+      right.textContent = '× ' + line.count;
+      row.appendChild(left);
+      row.appendChild(right);
+      body.appendChild(row);
+    });
+
+    const sub = document.createElement('div');
+    sub.className = 'order-subtotal';
+    sub.textContent = '소계: ' + g.subtotal + '개';
+    body.appendChild(sub);
+  });
+
+  const totalRow = document.createElement('div');
+  totalRow.className = 'order-subtotal';
+  totalRow.style.marginTop = '16px';
+  totalRow.style.fontWeight = '800';
+  totalRow.textContent = '합계: ' + totalCount + '개';
+  body.appendChild(totalRow);
+}
+
+function buildOrderText(){
+  const { groups, totalCount } = getOrderData();
+  const DIV = '────────────';
+  let lines = [];
+  lines.push('BMBRS Molotow 주문');
+  lines.push(DIV);
+  lines.push('');
+  groups.forEach(g => {
+    lines.push('[' + g.label + ']');
+    g.lines.forEach(line => {
+      lines.push('#' + line.num + ' ' + line.name + ' × ' + line.count);
+    });
+    lines.push('소계: ' + g.subtotal + '개 ');
+    lines.push('');
+  });
+  lines.push(DIV);
+  lines.push('합계: ' + totalCount + '개 ');
+  return lines.join('\n');
+}
+
+document.getElementById('orderBar').addEventListener('click', () => {
+  renderOrderPanel();
+  document.getElementById('orderPanel').classList.add('open');
+});
+document.getElementById('closeOrder').addEventListener('click', () => {
+  document.getElementById('orderPanel').classList.remove('open');
+});
+document.getElementById('orderPanel').addEventListener('click', (e) => {
+  if(e.target.id === 'orderPanel') document.getElementById('orderPanel').classList.remove('open');
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  TAB_ORDER.forEach(cat => { qty[cat] = {}; });
+  saveState();
+  render();
+  renderOrderPanel();
+  updateOrderBar();
+});
+
+document.getElementById('copyOrderBtn').addEventListener('click', async () => {
+  const text = buildOrderText();
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1600);
+});
+
+render();
+updateOrderBar();
+</script>
+</body>
+</html>
